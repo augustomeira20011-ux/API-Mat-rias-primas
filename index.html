@@ -85,8 +85,11 @@
           <table class="table table-bordered table-hover" id="tabelaMateriais">
             <thead>
               <tr>
+                <th>SKU</th>
                 <th>Nome da Matéria Prima</th>
+                <th>Quantidade</th>
                 <th>Unidade</th>
+                <th>Estoque Mínimo</th>
                 <th>Última Atualização</th>
               </tr>
             </thead>
@@ -102,8 +105,8 @@
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script>
-    // Endereço completo da API no Render
-    const API_URL = "https://api-mat-rias-primas.onrender.com/materiais";
+    // Endereço completo da API ajustado
+    const API_URL = "https://api-mat-rias-primas.onrender.com/api/materials";
 
     async function atualizarDashboard() {
       try {
@@ -113,8 +116,9 @@
 
         // Atualiza cards
         document.getElementById("totalMateriais").innerText = materiais.length;
-        document.getElementById("entradasRecentes").innerText = materiais.filter(m => m.tipo === "entrada").length;
-        document.getElementById("saidasRecentes").innerText = materiais.filter(m => m.tipo === "saida").length;
+        // Entradas e saídas recentes não são retornadas por padrão, pode requisitar endpoints específicos se existir
+        document.getElementById("entradasRecentes").innerText = "-";
+        document.getElementById("saidasRecentes").innerText = "-";
 
         // Atualiza tabela
         const tbody = document.querySelector("#tabelaMateriais tbody");
@@ -122,9 +126,12 @@
         materiais.forEach(mat => {
           const tr = document.createElement("tr");
           tr.innerHTML = `
-            <td>${mat.nome}</td>
-            <td>${mat.unidade}</td>
-            <td>${mat.ultimaAtualizacao}</td>
+            <td>${mat.sku || ""}</td>
+            <td>${mat.name || mat.nome || ""}</td>
+            <td>${mat.quantity || mat.quantidade || ""}</td>
+            <td>${mat.unidade || ""}</td>
+            <td>${mat.min_quantity || mat.estoque_minimo || ""}</td>
+            <td>${mat.updated_at ? new Date(mat.updated_at).toLocaleString("pt-BR") : ""}</td>
           `;
           tbody.appendChild(tr);
         });
@@ -138,13 +145,17 @@
     document.getElementById("formEntrada").addEventListener("submit", async function(e){
       e.preventDefault();
       const data = Object.fromEntries(new FormData(this));
-      data.tipo = "entrada"; // Marcar como entrada
-      data.quantidade = 1;    // Sempre uma unidade
+      // Backend espera apenas nome e quantidade, ajuste conforme seu modelo
+      const payload = {
+        name: data.nome,
+        quantity: 1,
+        unidade: data.unidade
+      };
 
       const response = await fetch(API_URL, {
         method: "POST",
         headers: {"Content-Type": "application/json"},
-        body: JSON.stringify(data)
+        body: JSON.stringify(payload)
       });
 
       if (response.ok) {
