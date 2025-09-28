@@ -6,19 +6,10 @@
   <title>Dashboard Estoque</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <style>
-    body {
-      background-color: #f8f9fa;
-    }
-    .card {
-      margin-bottom: 20px;
-    }
-    table {
-      background-color: #fff;
-    }
-    thead th {
-      background-color: #343a40;
-      color: #fff;
-    }
+    body { background-color: #f8f9fa; }
+    .card { margin-bottom: 20px; }
+    table { background-color: #fff; }
+    thead th { background-color: #343a40; color: #fff; }
   </style>
 </head>
 <body>
@@ -37,10 +28,32 @@
               <input type="text" class="form-control" name="nome" placeholder="Nome da Matéria Prima" required>
             </div>
             <div class="col-md-4">
-              <input type="text" class="form-control" name="unidade" placeholder="Unidade" required>
+              <input type="number" class="form-control" name="quantidade" placeholder="Quantidade" min="1" value="1" required>
             </div>
             <div class="col-md-3">
               <button type="submit" class="btn btn-success w-100">Registrar Entrada</button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Painel de Saída/Baixa de Materiais -->
+    <div class="card mb-4">
+      <div class="card-header bg-danger text-white">
+        Baixa (Saída) de Unidade de Matéria Prima
+      </div>
+      <div class="card-body">
+        <form id="formSaida">
+          <div class="row gy-2">
+            <div class="col-md-5">
+              <input type="text" class="form-control" name="nome" placeholder="Nome da Matéria Prima" required>
+            </div>
+            <div class="col-md-4">
+              <input type="number" class="form-control" name="quantidade" placeholder="Quantidade" min="1" value="1" required>
+            </div>
+            <div class="col-md-3">
+              <button type="submit" class="btn btn-danger w-100">Registrar Saída</button>
             </div>
           </div>
         </form>
@@ -61,7 +74,7 @@
         <div class="card text-white bg-success">
           <div class="card-body">
             <h5 class="card-title">Entradas Recentes</h5>
-            <p class="card-text" id="entradasRecentes">0</p>
+            <p class="card-text" id="entradasRecentes">-</p>
           </div>
         </div>
       </div>
@@ -69,7 +82,7 @@
         <div class="card text-white bg-info">
           <div class="card-body">
             <h5 class="card-title">Saídas Recentes</h5>
-            <p class="card-text" id="saidasRecentes">0</p>
+            <p class="card-text" id="saidasRecentes">-</p>
           </div>
         </div>
       </div>
@@ -88,7 +101,6 @@
                 <th>SKU</th>
                 <th>Nome da Matéria Prima</th>
                 <th>Quantidade</th>
-                <th>Unidade</th>
                 <th>Estoque Mínimo</th>
                 <th>Última Atualização</th>
               </tr>
@@ -105,22 +117,20 @@
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script>
-    // Endereço completo da API ajustado
-    const API_URL = "https://api-mat-rias-primas.onrender.com/api/materials";
+    // Endpoints corretos
+    const API_MATERIALS_URL = "https://api-mat-rias-primas.onrender.com/api/materials";
+    const API_ENTRIES_URL = "https://api-mat-rias-primas.onrender.com/api/entries/json";
 
     async function atualizarDashboard() {
       try {
-        const response = await fetch(API_URL);
+        const response = await fetch(API_MATERIALS_URL);
         if (!response.ok) throw new Error("Erro ao buscar materiais");
         const materiais = await response.json();
 
-        // Atualiza cards
         document.getElementById("totalMateriais").innerText = materiais.length;
-        // Entradas e saídas recentes não são retornadas por padrão, pode requisitar endpoints específicos se existir
         document.getElementById("entradasRecentes").innerText = "-";
         document.getElementById("saidasRecentes").innerText = "-";
 
-        // Atualiza tabela
         const tbody = document.querySelector("#tabelaMateriais tbody");
         tbody.innerHTML = "";
         materiais.forEach(mat => {
@@ -129,7 +139,6 @@
             <td>${mat.sku || ""}</td>
             <td>${mat.name || mat.nome || ""}</td>
             <td>${mat.quantity || mat.quantidade || ""}</td>
-            <td>${mat.unidade || ""}</td>
             <td>${mat.min_quantity || mat.estoque_minimo || ""}</td>
             <td>${mat.updated_at ? new Date(mat.updated_at).toLocaleString("pt-BR") : ""}</td>
           `;
@@ -141,18 +150,37 @@
       }
     }
 
+    // Função utilitária para buscar material pelo nome
+    async function buscarMaterialPorNome(nome) {
+      const response = await fetch(API_MATERIALS_URL);
+      if (!response.ok) return null;
+      const materiais = await response.json();
+      const material = materiais.find(m => (m.name||"").toLowerCase() === nome.toLowerCase() || (m.nome||"").toLowerCase() === nome.toLowerCase());
+      return material || null;
+    }
+
     // Formulário de entrada
     document.getElementById("formEntrada").addEventListener("submit", async function(e){
       e.preventDefault();
       const data = Object.fromEntries(new FormData(this));
-      // Backend espera apenas nome e quantidade, ajuste conforme seu modelo
+      const nome = data.nome;
+      const quantidade = parseInt(data.quantidade);
+
+      // Buscar material para obter seu SKU
+      const material = await buscarMaterialPorNome(nome);
+      if (!material) {
+        alert("Material não encontrado no estoque. Cadastre-o primeiro.");
+        return;
+      }
+
+      // Registrar entrada (positiva)
       const payload = {
-        name: data.nome,
-        quantity: 1,
-        unidade: data.unidade
+        sku: material.sku,
+        quantity: quantidade,
+        note: "Entrada manual via dashboard"
       };
 
-      const response = await fetch(API_URL, {
+      const response = await fetch(API_ENTRIES_URL, {
         method: "POST",
         headers: {"Content-Type": "application/json"},
         body: JSON.stringify(payload)
@@ -160,10 +188,46 @@
 
       if (response.ok) {
         alert("Entrada registrada com sucesso!");
-        atualizarDashboard(); // Atualiza os dados
+        atualizarDashboard();
         this.reset();
       } else {
         alert("Erro ao registrar entrada.");
+      }
+    });
+
+    // Formulário de saída
+    document.getElementById("formSaida").addEventListener("submit", async function(e){
+      e.preventDefault();
+      const data = Object.fromEntries(new FormData(this));
+      const nome = data.nome;
+      const quantidade = parseInt(data.quantidade);
+
+      // Buscar material para obter seu SKU
+      const material = await buscarMaterialPorNome(nome);
+      if (!material) {
+        alert("Material não encontrado no estoque. Cadastre-o primeiro.");
+        return;
+      }
+
+      // Registrar saída (baixa, quantidade negativa)
+      const payload = {
+        sku: material.sku,
+        quantity: -quantidade,
+        note: "Saída manual via dashboard"
+      };
+
+      const response = await fetch(API_ENTRIES_URL, {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify(payload)
+      });
+
+      if (response.ok) {
+        alert("Saída registrada com sucesso!");
+        atualizarDashboard();
+        this.reset();
+      } else {
+        alert("Erro ao registrar saída.");
       }
     });
 
