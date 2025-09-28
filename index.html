@@ -3,67 +3,110 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Inventário | Estoque Atual</title>
-    <link rel="stylesheet" href="/static/style.css">
+    <title>Dashboard | Inventário</title>
+    <link rel="stylesheet" href="/static/style_dashboard.css">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📦</text></svg>">
 </head>
 <body>
 
-    <header>
-        <div class="logo">Inventário <span class="highlight">🚀</span></div>
-        <nav>
-            <a href="/stock/in/form" class="nav-button primary-btn">Adicionar Estoque</a>
-            <a href="/pedido/form" class="nav-button">Registrar Pedido</a>
-            <a href="/report/view" class="nav-button">Relatório/Exportar</a>
-        </nav>
-    </header>
-
-    <main class="container">
-        <h1>Estoque Atual de Matérias-Primas</h1>
-
-        <div class="status-bar">
-            <span class="total-count">Total de Itens Listados: **{{ materials | length }}**</span>
-            <div class="filters">
-                <a href="/" class="filter-btn">Mostrar Todos</a>
-                <a href="/?below_threshold=True" class="filter-btn alert-btn">🚨 Mostrar Itens em Alerta (Low Stock)</a>
-            </div>
+<div class="dashboard-layout">
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <i class="icon-box"></i>
+            <span class="app-name">Estoque Pro</span>
+            <span class="app-sub">Matérias-Primas</span>
         </div>
+        <nav class="sidebar-menu">
+            <a href="/" class="menu-item active">
+                <i class="icon-panel"></i> Painel
+            </a>
+            <a href="/stock/in/form" class="menu-item">
+                <i class="icon-in"></i> Entrada de Estoque
+            </a>
+            <a href="/?below_threshold=True" class="menu-item alert">
+                <i class="icon-control"></i> Controle de Estoque 
+                {% if materials | selectattr("low") | list | length > 0 %}
+                    <span class="menu-alert-badge">{{ materials | selectattr("low") | list | length }}</span>
+                {% endif %}
+            </a>
+            <a href="/pedido/form" class="menu-item">
+                <i class="icon-integration"></i> Integração PedidoOK
+            </a>
+            <a href="/report/view" class="menu-item">
+                <i class="icon-report"></i> Relatórios
+            </a>
+        </nav>
+        <div class="api-status">
+            <span class="status-label">API de status</span>
+            <span class="status-indicator online">On-line</span>
+        </div>
+    </aside>
 
-        <table class="inventory-table">
-            <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>Nome da Matéria-Prima</th>
-                    <th class="qty-col">Quantidade Atual</th>
-                    <th class="status-col">Status</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for m in materials %}
-                <tr {% if m.low %} class="low-stock" {% endif %}>
-                    <td>{{ m.id }}</td>
-                    <td class="material-name-col">{{ m.name }}</td>
-                    <td class="qty-col">{{ "{:.2f}".format(m.quantity) }}</td>
-                    <td class="status-col">
-                        {% if m.low %}
-                            <span class="alert-indicator">ALERTA</span>
-                        {% else %}
-                            <span class="ok-indicator">OK</span>
-                        {% endif %}
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+    <main class="main-content">
+        <header class="top-bar">
+            <h2>Painel de Estoque</h2>
+            <p>Controle de materiais primas em tempo real</p>
+            <div class="header-actions">
+                <i class="icon-notification"></i>
+                <a href="/report/view" class="btn-exportar">Exportar Relatório</a>
+            </div>
+        </header>
+
+        <section class="metrics-grid">
+            
+            <div class="metric-card total-materials">
+                <p class="metric-title">Total de Materiais</p>
+                <div class="metric-value">
+                    {{ materials | length }}
+                    <i class="icon-box-large"></i>
+                </div>
+                <p class="metric-info">Materiais cadastrados no sistema</p>
+            </div>
+            
+            <div class="metric-card alerts">
+                {% set low_count = materials | selectattr("low") | list | length %}
+                <p class="metric-title">Alertas de Estoque</p>
+                <div class="metric-value alert-red">
+                    {{ low_count }}
+                    <i class="icon-alert-large"></i>
+                </div>
+                <p class="metric-info">Materiais abaixo do estoque mínimo</p>
+            </div>
+            
+            <div class="metric-card pedidos-hoje">
+                <p class="metric-title">Pedidos Hoje</p>
+                <div class="metric-value success-green">
+                    0
+                    <i class="icon-cart-large"></i>
+                </div>
+                <p class="metric-info">Pedidos processados via PedidoOK</p>
+            </div>
+            
+            <div class="metric-card valor-estoque">
+                <p class="metric-title">Valor em Estoque</p>
+                <div class="metric-value">
+                    R$ 15.940
+                    <i class="icon-money-large"></i>
+                </div>
+                <p class="metric-info">Estimativa baseada no custo médio</p>
+            </div>
+        </section>
+
+        <section class="visualization-grid">
+            <div class="chart-panel stock-levels">
+                <h3>Níveis de Estoque</h3>
+                <p>Aqui viria o gráfico de linha (Matplotlib/JS)</p>
+                <div class="chart-placeholder">Gráfico de Linha</div>
+            </div>
+            
+            <div class="chart-panel distribution">
+                <h3>Distribuição por Categoria</h3>
+                <div class="chart-placeholder circle-chart">Gráfico de Rosca/Pizza</div>
+            </div>
+        </section>
         
-        {% if not materials %}
-        <p class="empty-state">Nenhum item encontrado no estoque com os filtros atuais.</p>
-        {% endif %}
-    </main>
-    
-    <footer>
-        <p>&copy; 2025 Inventory API - PedidosOK Integration</p>
-    </footer>
+        </main>
+</div>
 
 </body>
 </html>
