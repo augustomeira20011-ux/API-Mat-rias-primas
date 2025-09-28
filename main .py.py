@@ -90,6 +90,18 @@ async def low_stock_watcher():
             await asyncio.sleep(10)
 
 # ------------------------------------------------------------
+# NEW ENDPOINT: Materiais primas a partir do material_ids.json
+# ------------------------------------------------------------
+@app.get("/api/materias_primas")
+def get_materias_primas():
+    if MATERIAL_IDS_PATH.exists():
+        with open(MATERIAL_IDS_PATH, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        # Exemplo: {nome: sku}
+        return [{"name": n, "sku": sku} for n, sku in data.items()]
+    return []
+
+# ------------------------------------------------------------
 # HTML pages
 # ------------------------------------------------------------
 @app.get("/", response_class=HTMLResponse)
