@@ -2,9 +2,10 @@ import os
 import json
 from pathlib import Path
 from datetime import datetime
+from sqlalchemy import func # Importação necessária para contagens no DB
 
 from fastapi import FastAPI, HTTPException, Header, Request, Form
-from fastapi.responses import RedirectResponse, FileResponse # Adicionado FileResponse
+from fastapi.responses import RedirectResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
@@ -17,8 +18,7 @@ import matplotlib.pyplot as plt
 # --- Load env ---
 load_dotenv()
 DEFAULT_LOW_STOCK_THRESHOLD = int(os.getenv("DEFAULT_LOW_STOCK_THRESHOLD", "5"))
-# Use este token para proteger a rota do PedidosOK
-TOKEN_PEDIDOK = os.getenv("TOKEN_PEDIDOK", "") 
+TOKEN_PEDIDOK = os.getenv("TOKEN_PEDIDOK", "")
 MOCK_API = os.getenv("MOCK_API", "false").lower() == "true"
 
 # --- Paths ---
@@ -37,7 +37,6 @@ try:
         FICHA_TEC = json.load(f)
 except FileNotFoundError as e:
     print(f"Erro: Arquivo de configuração não encontrado: {e}")
-    # Cria dicionários vazios para evitar erro fatal, mas a API não será funcional
     MATERIAL_IDS = {}
     FICHA_TEC = {}
 
@@ -53,15 +52,14 @@ class Material(Base):
     name = Column(String, nullable=False)
     quantity = Column(Float, default=0.0)
     low_threshold = Column(Integer, default=DEFAULT_LOW_STOCK_THRESHOLD)
-    # Novo campo para alertar estoque baixo
-    low = Column(Boolean, default=False) 
+    low = Column(Boolean, default=False)
 
 class StockMovement(Base):
     __tablename__ = "stock_movements"
     id = Column(Integer, primary_key=True, autoincrement=True)
     material_id = Column(String, ForeignKey("materials.id"))
     delta = Column(Float)
-    type = Column(String) # Ex: 'entrada', 'pedido', 'ajuste'
+    type = Column(String)
     reference = Column(String, nullable=True)
     timestamp = Column(DateTime, default=datetime.utcnow)
     material = relationship("Material")
@@ -115,29 +113,78 @@ def check_and_mark_low(db, material: Material):
     material.low = material.quantity <= (material.low_threshold or DEFAULT_LOW_STOCK_THRESHOLD)
     db.add(material)
 
+def get_dashboard_metrics(db) -> dict:
+    """
+    Puxa todas as métricas necessárias para o dashboard diretamente do banco.
+    """
+    today = datetime.utcnow().date()
+    
+    # 1. Total de Materiais Cadastrados
+    total_materials = db.query(Material).count()
+    
+    # 2. Alertas de Estoque (Low Stock)
+    low_stock_count = db.query(Material).filter(Material.low == True).count()
+    
+    # 3. Pedidos Hoje (Contagem de movimentos do tipo 'pedido_ok' na data de hoje)
+    pedidos_hoje_count = db.query(StockMovement).filter(
+        StockMovement.type.in_(["pedido_ok", "pedido_form"]),
+        func.date(StockMovement.timestamp) == today
+    ).count()
+
+    # 4. Valor Estimado em Estoque (Simulação de custo - AJUSTE ESTES CUSTOS)
+    CUSTO_SIMULADO_PADRAO = 10.0
+    CUSTO_POR_MATERIAL = {} # Dicionário vazio, substitua por seus custos reais
+    
+    materials = db.query(Material).all()
+    valor_total_estoque = 0.0
+    
+    for m in materials:
+        custo_unitario = CUSTO_POR_MATERIAL.get(m.id, CUSTO_SIMULADO_PADRAO)
+        valor_total_estoque += m.quantity * custo_unitario
+
+    return {
+        "total_materials": total_materials,
+        "low_stock_count": low_stock_count,
+        "pedidos_hoje_count": pedidos_hoje_count,
+        "valor_total_estoque": valor_total_estoque
+    }
+
+
 # --- Endpoints ---
 
-# Rota de Home (Interface Web)
+# Rota de Home (Interface Web - DASHBOARD)
 @app.get("/")
 def home(request: Request, below_threshold: bool | None = None):
     db = SessionLocal()
     try:
+        # Puxa os materiais para a tabela (Controle de Estoque)
         q = db.query(Material)
-        # Filtra para mostrar apenas itens com estoque baixo, se solicitado
         if below_threshold:
             q = q.filter(Material.low == True)
         materials = q.all()
-        return templates.TemplateResponse("index.html", {"request": request, "materials": materials})
+
+        # Puxa as métricas para os cartões
+        metrics = get_dashboard_metrics(db)
+        
+        return templates.TemplateResponse(
+            "index.html", 
+            {
+                "request": request, 
+                "materials": materials,
+                "metrics": metrics # Dados dinâmicos para o dashboard
+            }
+        )
     finally:
         db.close()
 
 # --- 1. ENTRADA DE ESTOQUE (API e Formulário) ---
 
-# Formulário Web
+# Formulário Web (GET)
 @app.get("/stock/in/form")
 def stock_in_form(request: Request):
     return templates.TemplateResponse("stock_in.html", {"request": request, "materials": MATERIAL_IDS.keys()})
 
+# Formulário Web (POST)
 @app.post("/stock/in/form")
 def stock_in_submit(request: Request,
                     material_name: str = Form(...),
@@ -161,9 +208,7 @@ def stock_in_submit(request: Request,
 # Rota API para Entrada de Estoque Externa
 @app.post("/api/stock/in", status_code=201)
 def api_stock_in(data: StockIn):
-    """
-    Registra a entrada de estoque de matéria-prima via API externa.
-    """
+    """Registra a entrada de estoque de matéria-prima via API externa."""
     db = SessionLocal()
     try:
         matid = get_matid_by_name(data.material_name)
@@ -187,14 +232,11 @@ def api_stock_in(data: StockIn):
         db.close()
 
 
-# --- 2. CONTROLE DE ESTOQUE (Consulta de Saldo) ---
+# --- 2. CONTROLE DE ESTOQUE (API) ---
 
-# Rota API para Consulta de Todo o Estoque
 @app.get("/api/stock/all")
 def api_get_stock_all():
-    """
-    Consulta o saldo atual de todas as matérias-primas.
-    """
+    """Consulta o saldo atual de todas as matérias-primas."""
     db = SessionLocal()
     try:
         materials = db.query(Material).all()
@@ -211,12 +253,9 @@ def api_get_stock_all():
     finally:
         db.close()
 
-# Rota API para Consulta de Estoque Baixo (ALERTA)
 @app.get("/api/stock/low")
 def api_get_low_stock():
-    """
-    Retorna a lista de todas as matérias-primas com estoque abaixo do limite (alerta).
-    """
+    """Retorna a lista de todas as matérias-primas com estoque abaixo do limite (alerta)."""
     db = SessionLocal()
     try:
         materials = db.query(Material).filter(Material.low == True).all()
@@ -237,9 +276,9 @@ def api_get_low_stock():
         db.close()
 
 
-# --- 3. INTEGRAÇÃO COM PEDIDOS OK (Webhook) ---
+# --- 3. INTEGRAÇÃO COM PEDIDOS OK (Webhook e Formulário) ---
 
-# Formulário Web para simulação (existente)
+# Formulário Web para simulação de Pedido/Baixa Manual
 @app.get("/pedido/form")
 def pedido_form(request: Request):
     return templates.TemplateResponse("pedido.html", {"request": request, "skus": FICHA_TEC.keys()})
@@ -249,8 +288,6 @@ def pedido_submit(request: Request,
                   sku: str = Form(...),
                   quantity: int = Form(...),
                   pedido_id: str = Form(...)):
-    # Lógica de baixa de estoque via formulário (mantida)
-    # ... (Seu código existente aqui)
     db = SessionLocal()
     insufficient = []
     try:
@@ -284,13 +321,9 @@ def pedido_submit(request: Request,
 @app.post("/api/pedido/webhook", status_code=200)
 def pedido_webhook(
     pedido_data: PedidoOK,
-    # Header de segurança, PedidosOK deve enviá-lo
     x_api_token: str = Header(None, alias="X-PedidoOK-Token") 
 ):
-    """
-    Recebe um pedido do PedidoOK via Webhook/API e dá baixa automática no estoque.
-    Requer o header 'X-PedidoOK-Token' para autenticação.
-    """
+    """Recebe um pedido do PedidoOK via Webhook/API e dá baixa automática no estoque."""
     
     # 1. Autenticação/Segurança
     if TOKEN_PEDIDOK and x_api_token != TOKEN_PEDIDOK:
@@ -300,15 +333,13 @@ def pedido_webhook(
     insufficient = []
     
     try:
-        # 2. Cálculo do Total de Consumo por Matéria-Prima
+        # 2. Cálculo do Total de Consumo por Matéria-Prima (Lógica de Baixa)
         totals = {}
         for item in pedido_data.items:
             sku = item.sku
             quantity = item.quantity
-            
             components = FICHA_TEC.get(sku)
             if not components:
-                # SKUs sem ficha técnica são ignorados para a baixa de estoque
                 continue 
 
             for comp in components:
@@ -331,7 +362,6 @@ def pedido_webhook(
                 })
 
         if insufficient:
-            # Retorna 409 (Conflict) informando que o estoque não permite a conclusão
             raise HTTPException(
                 status_code=409, 
                 detail="Estoque insuficiente para completar o pedido.", 
@@ -343,7 +373,6 @@ def pedido_webhook(
             mat = db.get(Material, matid)
             if mat: 
                 mat.quantity -= amount
-                
                 mv = StockMovement(
                     material_id=matid, 
                     delta=-amount, 
@@ -351,17 +380,15 @@ def pedido_webhook(
                     reference=pedido_data.id
                 )
                 db.add(mv)
-                check_and_mark_low(db, mat) # Atualiza o status de alerta
+                check_and_mark_low(db, mat)
 
         db.commit()
         return {"message": f"Baixa de estoque para o Pedido OK ID {pedido_data.id} efetuada com sucesso."}
 
     except HTTPException as e:
-        # Repassa 401/409/etc
         raise e
         
     except Exception as e:
-        # Erro interno
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Erro interno ao processar pedido: {str(e)}")
         
@@ -373,13 +400,10 @@ def pedido_webhook(
 
 @app.get("/export/data")
 def export_data_and_charts():
-    """
-    Gera o relatório de estoque (Excel) e o gráfico (PNG) e retorna os links para download.
-    """
+    """Gera o relatório de estoque (Excel) e o gráfico (PNG) e retorna os links para download."""
     db = SessionLocal()
     try:
         mats = db.query(Material).all()
-        # Converte dados do DB para DataFrame
         df = pd.DataFrame([{"id": m.id, "name": m.name, "quantity": m.quantity, "low": m.low} for m in mats])
         timestamp = datetime.utcnow().strftime("%Y%m%d%H%M%S")
         
@@ -393,7 +417,6 @@ def export_data_and_charts():
         png_filename = f"stock_chart_{timestamp}.png"
         png_path = EXPORT_DIR / png_filename
         
-        # Gráfico: Top 20 itens em estoque
         top = df.sort_values("quantity", ascending=False).head(20)
         plt.figure(figsize=(10,6))
         plt.bar(top["name"], top["quantity"], color='skyblue')
@@ -406,7 +429,6 @@ def export_data_and_charts():
         plt.savefig(png_path)
         plt.close()
         
-        # Retorna o link para download via API
         return {
             "message": "Relatório e gráfico gerados com sucesso.",
             "excel_file": excel_filename,
@@ -420,14 +442,11 @@ def export_data_and_charts():
 
 @app.get("/download/{filename}")
 def download_file(filename: str):
-    """
-    Permite o download dos arquivos de exportação gerados.
-    """
+    """Permite o download dos arquivos de exportação gerados."""
     file_path = EXPORT_DIR / filename
     if not file_path.exists():
         raise HTTPException(status_code=404, detail="Arquivo não encontrado.")
     
-    # Define o tipo de mídia (MIME type)
     if filename.endswith(".xlsx"):
         media_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     elif filename.endswith(".png"):
@@ -443,12 +462,10 @@ def download_file(filename: str):
 
 @app.get("/report/view")
 def report_view(request: Request):
-    """
-    Gera o relatório e exibe links para download na interface web.
-    """
-    # Reusa a lógica de geração de arquivos da rota /export/data
+    """Gera o relatório e exibe links para download na interface web."""
     result = export_data_and_charts()
     if 'excel_file' in result:
+        # Aqui, você precisará de um arquivo 'report.html' na sua pasta templates
         return templates.TemplateResponse(
             "report.html", 
             {"request": request, "excel": result["excel_file"], "chart": result["chart_file"]}
