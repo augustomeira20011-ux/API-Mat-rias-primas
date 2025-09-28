@@ -38,22 +38,22 @@
       </div>
     </div>
 
-    <!-- Painel de Saída/Baixa de Materiais -->
+    <!-- Painel de Baixa por Produto (SKU/código) -->
     <div class="card mb-4">
-      <div class="card-header bg-danger text-white">
-        Baixa (Saída) de Unidade de Matéria Prima
+      <div class="card-header bg-warning text-dark">
+        Baixa de Produto (SKU/Código)
       </div>
       <div class="card-body">
-        <form id="formSaida">
+        <form id="formBaixaProduto">
           <div class="row gy-2">
-            <div class="col-md-5">
-              <input type="text" class="form-control" name="nome" placeholder="Nome da Matéria Prima" required>
-            </div>
-            <div class="col-md-4">
-              <input type="number" class="form-control" name="quantidade" placeholder="Quantidade" min="1" value="1" required>
+            <div class="col-md-7">
+              <input type="text" class="form-control" name="codigo_produto" placeholder="Código ou nome do Produto" required>
             </div>
             <div class="col-md-3">
-              <button type="submit" class="btn btn-danger w-100">Registrar Saída</button>
+              <input type="number" class="form-control" name="quantidade" min="1" value="1" required>
+            </div>
+            <div class="col-md-2">
+              <button type="submit" class="btn btn-warning w-100">Dar Baixa</button>
             </div>
           </div>
         </form>
@@ -117,9 +117,10 @@
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script>
-    // Endpoints corretos
+    // Endpoints
     const API_MATERIALS_URL = "https://api-mat-rias-primas.onrender.com/api/materials";
     const API_ENTRIES_URL = "https://api-mat-rias-primas.onrender.com/api/entries/json";
+    const API_PEDIDOOK_URL = "https://api-mat-rias-primas.onrender.com/webhook/pedidook";
 
     async function atualizarDashboard() {
       try {
@@ -195,39 +196,33 @@
       }
     });
 
-    // Formulário de saída
-    document.getElementById("formSaida").addEventListener("submit", async function(e){
+    // Formulário de baixa por produto (SKU/código)
+    document.getElementById("formBaixaProduto").addEventListener("submit", async function(e){
       e.preventDefault();
       const data = Object.fromEntries(new FormData(this));
-      const nome = data.nome;
+      const codigo_produto = data.codigo_produto;
       const quantidade = parseInt(data.quantidade);
 
-      // Buscar material para obter seu SKU
-      const material = await buscarMaterialPorNome(nome);
-      if (!material) {
-        alert("Material não encontrado no estoque. Cadastre-o primeiro.");
-        return;
-      }
-
-      // Registrar saída (baixa, quantidade negativa)
+      // Monta payload no formato esperado pelo webhook/pedidook
       const payload = {
-        sku: material.sku,
-        quantity: -quantidade,
-        note: "Saída manual via dashboard"
+        order_id: `manual_${Date.now()}`,
+        items: [
+          { product_code: codigo_produto, qty: quantidade }
+        ]
       };
 
-      const response = await fetch(API_ENTRIES_URL, {
+      const response = await fetch(API_PEDIDOOK_URL, {
         method: "POST",
         headers: {"Content-Type": "application/json"},
         body: JSON.stringify(payload)
       });
 
       if (response.ok) {
-        alert("Saída registrada com sucesso!");
+        alert("Baixa efetuada!");
         atualizarDashboard();
         this.reset();
       } else {
-        alert("Erro ao registrar saída.");
+        alert("Erro ao dar baixa.");
       }
     });
 
