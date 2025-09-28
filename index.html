@@ -1,149 +1,56 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-br">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard | Inventário Pro</title>
-    <link rel="stylesheet" href="/static/style_dashboard.css">
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📦</text></svg>">
+  <meta charset="UTF-8">
+  <title>Painel de Estoque</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
 </head>
-<body>
+<body class="bg-gray-100 text-gray-800">
 
-<div class="dashboard-layout">
-    <aside class="sidebar">
-        <div class="sidebar-header">
-            <i class="icon-box"></i>
-            <span class="app-name">Estoque Pro</span>
-            <span class="app-sub">Matérias-Primas</span>
-        </div>
-        <nav class="sidebar-menu">
-            <a href="/" class="menu-item active">
-                <i class="icon-panel"></i> Painel
-            </a>
-            <a href="/stock/in/form" class="menu-item">
-                <i class="icon-in"></i> Entrada de Estoque
-            </a>
-            <a href="/?below_threshold=True" class="menu-item alert">
-                <i class="icon-control"></i> Controle de Estoque 
-                {% if metrics.low_stock_count > 0 %}
-                    <span class="menu-alert-badge">{{ metrics.low_stock_count }}</span>
-                {% endif %}
-            </a>
-            <a href="/pedido/form" class="menu-item">
-                <i class="icon-integration"></i> Pedido/Baixa Manual
-            </a>
-            <a href="/report/view" class="menu-item">
-                <i class="icon-report"></i> Relatórios
-            </a>
-        </nav>
-        <div class="api-status">
-            <span class="status-label">API de status</span>
-            <span class="status-indicator online">On-line</span>
-        </div>
-    </aside>
+  <!-- Header -->
+  <header class="bg-blue-600 text-white p-4">
+    <h1 class="text-2xl font-bold">Estoque Pro Matérias-Primas</h1>
+    <nav class="mt-2">
+      <a href="/" class="mr-4 hover:underline">Painel</a>
+      <a href="/entrada" class="mr-4 hover:underline">Entrada de Estoque</a>
+      <a href="/pedido" class="mr-4 hover:underline">Pedido/Baixa Manual</a>
+      <a href="/relatorios" class="hover:underline">Relatórios</a>
+    </nav>
+  </header>
 
-    <main class="main-content">
-        <header class="top-bar">
-            <div>
-                <h2>Painel de Estoque</h2>
-                <p>Controle de materiais primas em tempo real</p>
-            </div>
-            <div class="header-actions">
-                <i class="icon-notification"></i>
-                <a href="/report/view" class="btn-exportar">Exportar Relatório</a>
-            </div>
-        </header>
+  <!-- Painel -->
+  <main class="p-6">
+    <h2 class="text-xl font-semibold mb-4">📊 Painel de Estoque</h2>
+    <p class="mb-6 text-gray-600">Controle de matérias-primas em tempo real</p>
 
-        <section class="metrics-grid">
-            
-            <div class="metric-card total-materials">
-                <p class="metric-title">Total de Materiais</p>
-                <div class="metric-value">
-                    {{ metrics.total_materials }}
-                    <i class="icon-box-large"></i>
-                </div>
-                <p class="metric-info">Materiais cadastrados no sistema</p>
-            </div>
-            
-            <div class="metric-card alerts">
-                <p class="metric-title">Alertas de Estoque</p>
-                <div class="metric-value alert-red">
-                    {{ metrics.low_stock_count }}
-                    <i class="icon-alert-large"></i>
-                </div>
-                <p class="metric-info">Materiais abaixo do estoque mínimo</p>
-            </div>
-            
-            <div class="metric-card pedidos-hoje">
-                <p class="metric-title">Pedidos Hoje</p>
-                <div class="metric-value success-green">
-                    {{ metrics.pedidos_hoje_count }}
-                    <i class="icon-cart-large"></i>
-                </div>
-                <p class="metric-info">Pedidos processados via PedidoOK</p>
-            </div>
-            
-            <div class="metric-card valor-estoque">
-                <p class="metric-title">Valor em Estoque</p>
-                <div class="metric-value">
-                    R$ {{ "{:,.2f}".format(metrics.valor_total_estoque).replace(",", "X").replace(".", ",").replace("X", ".") }}
-                    <i class="icon-money-large"></i>
-                </div>
-                <p class="metric-info">Estimativa baseada no custo médio</p>
-            </div>
-        </section>
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
 
-        <section class="visualization-grid">
-            <div class="chart-panel stock-levels">
-                <h3>Níveis de Estoque</h3>
-                <p class="chart-subtitle">Histórico de estoque dos principais materiais (últimos 7 dias)</p>
-                <div class="chart-placeholder">Gráfico de Níveis de Estoque (Implementação Matplotlib/JS)</div>
-            </div>
-            
-            <div class="chart-panel distribution">
-                <h3>Distribuição por Categoria</h3>
-                <p class="chart-subtitle">Distribuição por Categoria (Implementação Matplotlib/JS)</p>
-                <div class="chart-placeholder circle-chart">Gráfico de Rosca/Pizza</div>
-            </div>
-        </section>
-        
-        <section class="inventory-section">
-            <h3 class="section-title">Itens em Estoque (Listagem Rápida)</h3>
-            
-            <table class="inventory-table">
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Nome da Matéria-Prima</th>
-                        <th class="qty-col">Quantidade Atual</th>
-                        <th class="status-col">Status</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for m in materials %}
-                    <tr {% if m.low %} class="low-stock" {% endif %}>
-                        <td>{{ m.id }}</td>
-                        <td class="material-name-col">{{ m.name }}</td>
-                        <td class="qty-col">{{ "{:.2f}".format(m.quantity) }}</td>
-                        <td class="status-col">
-                            {% if m.low %}
-                                <span class="alert-indicator">ALERTA</span>
-                            {% else %}
-                                <span class="ok-indicator">OK</span>
-                            {% endif %}
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-            
-            {% if not materials %}
-            <p class="empty-state">Nenhum item encontrado no estoque com os filtros atuais.</p>
-            {% endif %}
-        </section>
+      <!-- Total de materiais -->
+      <div class="bg-white p-4 rounded-xl shadow">
+        <h3 class="font-bold text-gray-700">Total de Materiais</h3>
+        <p class="text-2xl text-blue-600">{{ metrics.total_materials }}</p>
+      </div>
 
-    </main>
-</div>
+      <!-- Alertas de estoque -->
+      <div class="bg-white p-4 rounded-xl shadow">
+        <h3 class="font-bold text-gray-700">Materiais abaixo do estoque mínimo</h3>
+        <p class="text-2xl text-red-500">{{ metrics.low_stock_count }}</p>
+      </div>
+
+      <!-- Pedidos hoje -->
+      <div class="bg-white p-4 rounded-xl shadow">
+        <h3 class="font-bold text-gray-700">Pedidos Hoje</h3>
+        <p class="text-2xl text-green-600">{{ metrics.pedidos_hoje_count }}</p>
+      </div>
+
+      <!-- Valor em estoque -->
+      <div class="bg-white p-4 rounded-xl shadow col-span-1 md:col-span-2">
+        <h3 class="font-bold text-gray-700">Valor Total em Estoque</h3>
+        <p class="text-2xl text-purple-600">R$ {{ "{:,.2f}".format(metrics.valor_total_estoque) }}</p>
+      </div>
+
+    </div>
+  </main>
 
 </body>
 </html>
