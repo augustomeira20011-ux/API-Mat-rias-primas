@@ -5,11 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Dashboard Estoque</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
   <style>
     body { background-color: #f8f9fa; }
     .card { margin-bottom: 20px; }
     table { background-color: #fff; }
     thead th { background-color: #343a40; color: #fff; }
+    .select2-container--bootstrap5 .select2-selection { min-height: 38px; }
   </style>
 </head>
 <body>
@@ -25,7 +27,11 @@
         <form id="formEntrada">
           <div class="row gy-2">
             <div class="col-md-5">
-              <input type="text" class="form-control" name="nome" placeholder="Nome da Matéria Prima" required>
+              <!-- select2 menu suspenso -->
+              <select id="selectMateriaPrima" class="form-select" name="nome" required>
+                <option value="">Selecione a Matéria Prima...</option>
+                <!-- As opções serão preenchidas via JS -->
+              </select>
             </div>
             <div class="col-md-4">
               <input type="number" class="form-control" name="quantidade" placeholder="Quantidade" min="1" value="1" required>
@@ -116,11 +122,38 @@
 
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
   <script>
     // Endpoints
     const API_MATERIALS_URL = "https://api-mat-rias-primas.onrender.com/api/materials";
     const API_ENTRIES_URL = "https://api-mat-rias-primas.onrender.com/api/entries/json";
     const API_PEDIDOOK_URL = "https://api-mat-rias-primas.onrender.com/webhook/pedidook";
+
+    // Preencher menu suspenso de matérias primas (com pesquisa)
+    async function preencherMateriasPrimas() {
+      try {
+        const response = await fetch(API_MATERIALS_URL);
+        if (!response.ok) throw new Error("Erro ao buscar matérias-primas");
+        const materiais = await response.json();
+        const select = $("#selectMateriaPrima");
+        select.empty();
+        select.append(`<option value="">Selecione a Matéria Prima...</option>`);
+        materiais.forEach(mat => {
+          const nome = mat.name || mat.nome || "";
+          select.append(`<option value="${nome}">${nome} (${mat.sku})</option>`);
+        });
+        // Inicializa select2 (menu suspenso com pesquisa)
+        select.select2({
+          theme: "bootstrap5",
+          placeholder: "Selecione ou pesquise...",
+          allowClear: true
+        });
+      } catch (err) {
+        console.error(err);
+        alert("Não foi possível carregar o menu de matérias-primas.");
+      }
+    }
 
     async function atualizarDashboard() {
       try {
@@ -163,14 +196,18 @@
     // Formulário de entrada
     document.getElementById("formEntrada").addEventListener("submit", async function(e){
       e.preventDefault();
-      const data = Object.fromEntries(new FormData(this));
-      const nome = data.nome;
-      const quantidade = parseInt(data.quantidade);
+      const nome = $("#selectMateriaPrima").val();
+      const quantidade = parseInt(this.quantidade.value);
+
+      if (!nome) {
+        alert("Selecione uma matéria-prima!");
+        return;
+      }
 
       // Buscar material para obter seu SKU
       const material = await buscarMaterialPorNome(nome);
       if (!material) {
-        alert("Material não encontrado no estoque. Cadastre-o primeiro.");
+        alert("Matéria-prima não encontrada no estoque. Cadastre-a primeiro.");
         return;
       }
 
@@ -191,6 +228,7 @@
         alert("Entrada registrada com sucesso!");
         atualizarDashboard();
         this.reset();
+        $("#selectMateriaPrima").val("").trigger("change");
       } else {
         alert("Erro ao registrar entrada.");
       }
@@ -199,9 +237,13 @@
     // Formulário de baixa por SKU do produto
     document.getElementById("formBaixaSKU").addEventListener("submit", async function(e){
       e.preventDefault();
-      const data = Object.fromEntries(new FormData(this));
-      const sku_produto = data.sku_produto;
-      const quantidade = parseInt(data.quantidade);
+      const sku_produto = this.sku_produto.value;
+      const quantidade = parseInt(this.quantidade.value);
+
+      if (!sku_produto) {
+        alert("Informe o SKU do produto!");
+        return;
+      }
 
       // Monta payload no formato esperado pelo webhook/pedidook
       const payload = {
@@ -226,7 +268,11 @@
       }
     });
 
-    document.addEventListener("DOMContentLoaded", atualizarDashboard);
+    // Inicialização
+    document.addEventListener("DOMContentLoaded", function(){
+      preencherMateriasPrimas();
+      atualizarDashboard();
+    });
   </script>
 </body>
 </html>
