@@ -1,24 +1,69 @@
 <!DOCTYPE html>
-<html>
+<html lang="pt-BR">
 <head>
-<title>Estoque</title>
-<link rel="stylesheet" href="/static/style.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inventário | Estoque Atual</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📦</text></svg>">
 </head>
 <body>
-<h1>Estoque Atual</h1>
-<a href="/stock/in/form">Adicionar Estoque</a> |
-<a href="/pedido/form">Registrar Pedido</a> |
-<a href="/report/view">Relatório</a>
-<table>
-<tr><th>ID</th><th>Nome</th><th>Quantidade</th><th>Low</th></tr>
-{% for m in materials %}
-<tr>
-<td>{{ m.id }}</td>
-<td>{{ m.name }}</td>
-<td>{{ m.quantity }}</td>
-<td>{{ m.low }}</td>
-</tr>
-{% endfor %}
-</table>
+
+    <header>
+        <div class="logo">Inventário <span class="highlight">🚀</span></div>
+        <nav>
+            <a href="/stock/in/form" class="nav-button primary-btn">Adicionar Estoque</a>
+            <a href="/pedido/form" class="nav-button">Registrar Pedido</a>
+            <a href="/report/view" class="nav-button">Relatório/Exportar</a>
+        </nav>
+    </header>
+
+    <main class="container">
+        <h1>Estoque Atual de Matérias-Primas</h1>
+
+        <div class="status-bar">
+            <span class="total-count">Total de Itens Listados: **{{ materials | length }}**</span>
+            <div class="filters">
+                <a href="/" class="filter-btn">Mostrar Todos</a>
+                <a href="/?below_threshold=True" class="filter-btn alert-btn">🚨 Mostrar Itens em Alerta (Low Stock)</a>
+            </div>
+        </div>
+
+        <table class="inventory-table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Nome da Matéria-Prima</th>
+                    <th class="qty-col">Quantidade Atual</th>
+                    <th class="status-col">Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for m in materials %}
+                <tr {% if m.low %} class="low-stock" {% endif %}>
+                    <td>{{ m.id }}</td>
+                    <td class="material-name-col">{{ m.name }}</td>
+                    <td class="qty-col">{{ "{:.2f}".format(m.quantity) }}</td>
+                    <td class="status-col">
+                        {% if m.low %}
+                            <span class="alert-indicator">ALERTA</span>
+                        {% else %}
+                            <span class="ok-indicator">OK</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        
+        {% if not materials %}
+        <p class="empty-state">Nenhum item encontrado no estoque com os filtros atuais.</p>
+        {% endif %}
+    </main>
+    
+    <footer>
+        <p>&copy; 2025 Inventory API - PedidosOK Integration</p>
+    </footer>
+
 </body>
 </html>
