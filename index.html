@@ -102,9 +102,12 @@
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script>
+    // Endereço completo da API no Render
+    const API_URL = "https://api-mat-rias-primas.onrender.com/materiais";
+
     async function atualizarDashboard() {
       try {
-        const response = await fetch("/materiais");
+        const response = await fetch(API_URL);
         if (!response.ok) throw new Error("Erro ao buscar materiais");
         const materiais = await response.json();
 
@@ -138,7 +141,7 @@
       data.tipo = "entrada"; // Marcar como entrada
       data.quantidade = 1;    // Sempre uma unidade
 
-      const response = await fetch("/materiais", {
+      const response = await fetch(API_URL, {
         method: "POST",
         headers: {"Content-Type": "application/json"},
         body: JSON.stringify(data)
