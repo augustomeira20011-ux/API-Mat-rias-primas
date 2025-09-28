@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Estoque</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<h1>Estoque Atual</h1>
+<a href="/stock/in/form">Adicionar Estoque</a> |
+<a href="/pedido/form">Registrar Pedido</a> |
+<a href="/report/view">Relatório</a>
+<table>
+<tr><th>ID</th><th>Nome</th><th>Quantidade</th><th>Low</th></tr>
+{% for m in materials %}
+<tr>
+<td>{{ m.id }}</td>
+<td>{{ m.name }}</td>
+<td>{{ m.quantity }}</td>
+<td>{{ m.low }}</td>
+</tr>
+{% endfor %}
+</table>
+</body>
+</html>

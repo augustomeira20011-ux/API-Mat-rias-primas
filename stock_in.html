@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Adicionar Estoque</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<h1>Adicionar Estoque</h1>
+{% if error %}
+<p style="color:red">{{ error }}</p>
+{% endif %}
+<form method="post" action="/stock/in/form">
+ Material: <select name="material_name">
+ {% for m in materials %}
+<option value="{{ m }}">{{ m }}</option>
+ {% endfor %}
+</select><br>
+ Quantidade: <input type="number" step="0.01" name="quantity"><br>
+ Referência: <input type="text" name="reference"><br>
+<button type="submit">Enviar</button>
+</form>
+<a href="/">Voltar</a>
+</body>
+</html>
