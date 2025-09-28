@@ -2,55 +2,37 @@
 <html lang="pt-br">
 <head>
   <meta charset="UTF-8">
-  <title>Painel de Estoque</title>
+  <title>Entrada de Estoque</title>
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
 </head>
-<body class="bg-gray-100 text-gray-800">
+<body class="bg-gray-100 p-6">
 
-  <!-- Header -->
-  <header class="bg-blue-600 text-white p-4">
-    <h1 class="text-2xl font-bold">Estoque Pro Matérias-Primas</h1>
-    <nav class="mt-2">
-      <a href="/" class="mr-4 hover:underline">Painel</a>
-      <a href="/entrada" class="mr-4 hover:underline">Entrada de Estoque</a>
-      <a href="/pedido" class="mr-4 hover:underline">Pedido/Baixa Manual</a>
-      <a href="/relatorios" class="hover:underline">Relatórios</a>
-    </nav>
-  </header>
+  <h1 class="text-2xl font-bold text-blue-600 mb-6">Entrada de Estoque</h1>
 
-  <!-- Painel -->
-  <main class="p-6">
-    <h2 class="text-xl font-semibold mb-4">📊 Painel de Estoque</h2>
-    <p class="mb-6 text-gray-600">Controle de matérias-primas em tempo real</p>
+  <form action="/entrada" method="post" class="bg-white p-6 rounded-xl shadow w-full max-w-lg">
 
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-
-      <!-- Total de materiais -->
-      <div class="bg-white p-4 rounded-xl shadow">
-        <h3 class="font-bold text-gray-700">Total de Materiais</h3>
-        <p class="text-2xl text-blue-600">{{ metrics.total_materials }}</p>
-      </div>
-
-      <!-- Alertas de estoque -->
-      <div class="bg-white p-4 rounded-xl shadow">
-        <h3 class="font-bold text-gray-700">Materiais abaixo do estoque mínimo</h3>
-        <p class="text-2xl text-red-500">{{ metrics.low_stock_count }}</p>
-      </div>
-
-      <!-- Pedidos hoje -->
-      <div class="bg-white p-4 rounded-xl shadow">
-        <h3 class="font-bold text-gray-700">Pedidos Hoje</h3>
-        <p class="text-2xl text-green-600">{{ metrics.pedidos_hoje_count }}</p>
-      </div>
-
-      <!-- Valor em estoque -->
-      <div class="bg-white p-4 rounded-xl shadow col-span-1 md:col-span-2">
-        <h3 class="font-bold text-gray-700">Valor Total em Estoque</h3>
-        <p class="text-2xl text-purple-600">R$ {{ "{:,.2f}".format(metrics.valor_total_estoque) }}</p>
-      </div>
-
+    <div class="mb-4">
+      <label class="block text-gray-700 font-semibold">Selecione o Material</label>
+      <select name="nome" required
+              class="w-full border rounded px-3 py-2 mt-1 focus:ring focus:ring-blue-300">
+        {% for mat in materiais %}
+          <option value="{{ mat.name }}">{{ mat.name }} ({{ mat.sku }})</option>
+        {% endfor %}
+      </select>
     </div>
-  </main>
+
+    <div class="mb-6">
+      <label class="block text-gray-700 font-semibold">Quantidade</label>
+      <input type="number" name="quantidade" required min="1"
+             class="w-full border rounded px-3 py-2 mt-1 focus:ring focus:ring-blue-300">
+    </div>
+
+    <button type="submit"
+            class="w-full bg-blue-600 text-white font-bold py-2 px-4 rounded hover:bg-blue-700">
+      Registrar Entrada
+    </button>
+
+  </form>
 
 </body>
 </html>
