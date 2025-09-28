@@ -38,22 +38,22 @@
       </div>
     </div>
 
-    <!-- Painel de Baixa por Produto (SKU/código) -->
+    <!-- Painel de Baixa por SKU do Produto -->
     <div class="card mb-4">
-      <div class="card-header bg-warning text-dark">
-        Baixa de Produto (SKU/Código)
+      <div class="card-header bg-danger text-white">
+        Baixa (Saída) por SKU de Produto
       </div>
       <div class="card-body">
-        <form id="formBaixaProduto">
+        <form id="formBaixaSKU">
           <div class="row gy-2">
-            <div class="col-md-7">
-              <input type="text" class="form-control" name="codigo_produto" placeholder="Código ou nome do Produto" required>
+            <div class="col-md-5">
+              <input type="text" class="form-control" name="sku_produto" placeholder="SKU do Produto" required>
+            </div>
+            <div class="col-md-4">
+              <input type="number" class="form-control" name="quantidade" placeholder="Quantidade" min="1" value="1" required>
             </div>
             <div class="col-md-3">
-              <input type="number" class="form-control" name="quantidade" min="1" value="1" required>
-            </div>
-            <div class="col-md-2">
-              <button type="submit" class="btn btn-warning w-100">Dar Baixa</button>
+              <button type="submit" class="btn btn-danger w-100">Registrar Saída</button>
             </div>
           </div>
         </form>
@@ -196,18 +196,18 @@
       }
     });
 
-    // Formulário de baixa por produto (SKU/código)
-    document.getElementById("formBaixaProduto").addEventListener("submit", async function(e){
+    // Formulário de baixa por SKU do produto
+    document.getElementById("formBaixaSKU").addEventListener("submit", async function(e){
       e.preventDefault();
       const data = Object.fromEntries(new FormData(this));
-      const codigo_produto = data.codigo_produto;
+      const sku_produto = data.sku_produto;
       const quantidade = parseInt(data.quantidade);
 
       // Monta payload no formato esperado pelo webhook/pedidook
       const payload = {
         order_id: `manual_${Date.now()}`,
         items: [
-          { product_code: codigo_produto, qty: quantidade }
+          { product_code: sku_produto, qty: quantidade }
         ]
       };
 
@@ -218,11 +218,11 @@
       });
 
       if (response.ok) {
-        alert("Baixa efetuada!");
+        alert("Saída registrada com sucesso!");
         atualizarDashboard();
         this.reset();
       } else {
-        alert("Erro ao dar baixa.");
+        alert("Erro ao registrar saída.");
       }
     });
 
