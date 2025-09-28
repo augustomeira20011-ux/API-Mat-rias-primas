@@ -28,21 +28,15 @@
     <!-- Painel de Entrada de Materiais -->
     <div class="card mb-4">
       <div class="card-header bg-secondary text-white">
-        Entrada de Material no Estoque
+        Entrada de Unidade de Matéria Prima
       </div>
       <div class="card-body">
         <form id="formEntrada">
           <div class="row gy-2">
-            <div class="col-md-2">
-              <input type="text" class="form-control" name="sku" placeholder="SKU" required>
+            <div class="col-md-5">
+              <input type="text" class="form-control" name="nome" placeholder="Nome da Matéria Prima" required>
             </div>
-            <div class="col-md-3">
-              <input type="text" class="form-control" name="nome" placeholder="Nome do Material" required>
-            </div>
-            <div class="col-md-2">
-              <input type="number" class="form-control" name="quantidade" placeholder="Quantidade" required min="1">
-            </div>
-            <div class="col-md-2">
+            <div class="col-md-4">
               <input type="text" class="form-control" name="unidade" placeholder="Unidade" required>
             </div>
             <div class="col-md-3">
@@ -55,7 +49,7 @@
 
     <!-- Cards de Resumo -->
     <div class="row mb-4">
-      <div class="col-md-3">
+      <div class="col-md-4">
         <div class="card text-white bg-primary">
           <div class="card-body">
             <h5 class="card-title">Total de Materiais</h5>
@@ -63,15 +57,7 @@
           </div>
         </div>
       </div>
-      <div class="col-md-3">
-        <div class="card text-white bg-warning">
-          <div class="card-body">
-            <h5 class="card-title">Estoque Baixo</h5>
-            <p class="card-text" id="estoqueBaixo">0</p>
-          </div>
-        </div>
-      </div>
-      <div class="col-md-3">
+      <div class="col-md-4">
         <div class="card text-white bg-success">
           <div class="card-body">
             <h5 class="card-title">Entradas Recentes</h5>
@@ -79,7 +65,7 @@
           </div>
         </div>
       </div>
-      <div class="col-md-3">
+      <div class="col-md-4">
         <div class="card text-white bg-info">
           <div class="card-body">
             <h5 class="card-title">Saídas Recentes</h5>
@@ -99,9 +85,7 @@
           <table class="table table-bordered table-hover" id="tabelaMateriais">
             <thead>
               <tr>
-                <th>SKU</th>
-                <th>Nome do Material</th>
-                <th>Quantidade</th>
+                <th>Nome da Matéria Prima</th>
                 <th>Unidade</th>
                 <th>Última Atualização</th>
               </tr>
@@ -126,7 +110,6 @@
 
         // Atualiza cards
         document.getElementById("totalMateriais").innerText = materiais.length;
-        document.getElementById("estoqueBaixo").innerText = materiais.filter(m => m.quantidade < 100).length;
         document.getElementById("entradasRecentes").innerText = materiais.filter(m => m.tipo === "entrada").length;
         document.getElementById("saidasRecentes").innerText = materiais.filter(m => m.tipo === "saida").length;
 
@@ -136,9 +119,7 @@
         materiais.forEach(mat => {
           const tr = document.createElement("tr");
           tr.innerHTML = `
-            <td>${mat.sku}</td>
             <td>${mat.nome}</td>
-            <td>${mat.quantidade}</td>
             <td>${mat.unidade}</td>
             <td>${mat.ultimaAtualizacao}</td>
           `;
@@ -155,6 +136,7 @@
       e.preventDefault();
       const data = Object.fromEntries(new FormData(this));
       data.tipo = "entrada"; // Marcar como entrada
+      data.quantidade = 1;    // Sempre uma unidade
 
       const response = await fetch("/materiais", {
         method: "POST",
