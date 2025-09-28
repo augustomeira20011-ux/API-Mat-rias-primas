@@ -126,6 +126,7 @@
   <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
   <script>
     // Endpoints
+    const API_MATERIAS_PRIMAS = "https://api-mat-rias-primas.onrender.com/api/materias_primas";
     const API_MATERIALS_URL = "https://api-mat-rias-primas.onrender.com/api/materials";
     const API_ENTRIES_URL = "https://api-mat-rias-primas.onrender.com/api/entries/json";
     const API_PEDIDOOK_URL = "https://api-mat-rias-primas.onrender.com/webhook/pedidook";
@@ -133,17 +134,15 @@
     // Preencher menu suspenso de matérias primas (com pesquisa)
     async function preencherMateriasPrimas() {
       try {
-        const response = await fetch(API_MATERIALS_URL);
+        const response = await fetch(API_MATERIAS_PRIMAS);
         if (!response.ok) throw new Error("Erro ao buscar matérias-primas");
-        const materiais = await response.json();
+        const materias = await response.json();
         const select = $("#selectMateriaPrima");
         select.empty();
         select.append(`<option value="">Selecione a Matéria Prima...</option>`);
-        materiais.forEach(mat => {
-          const nome = mat.name || mat.nome || "";
-          select.append(`<option value="${nome}">${nome} (${mat.sku})</option>`);
+        materias.forEach(mat => {
+          select.append(`<option value="${mat.name}">${mat.name} (${mat.sku})</option>`);
         });
-        // Inicializa select2 (menu suspenso com pesquisa)
         select.select2({
           theme: "bootstrap5",
           placeholder: "Selecione ou pesquise...",
@@ -184,12 +183,12 @@
       }
     }
 
-    // Função utilitária para buscar material pelo nome
-    async function buscarMaterialPorNome(nome) {
-      const response = await fetch(API_MATERIALS_URL);
+    // Função utilitária para buscar material pelo nome usando API_MATERIAS_PRIMAS
+    async function buscarMaterialPorNomeMateriaPrima(nome) {
+      const response = await fetch(API_MATERIAS_PRIMAS);
       if (!response.ok) return null;
-      const materiais = await response.json();
-      const material = materiais.find(m => (m.name||"").toLowerCase() === nome.toLowerCase() || (m.nome||"").toLowerCase() === nome.toLowerCase());
+      const materias = await response.json();
+      const material = materias.find(m => (m.name||"").toLowerCase() === nome.toLowerCase());
       return material || null;
     }
 
@@ -204,10 +203,10 @@
         return;
       }
 
-      // Buscar material para obter seu SKU
-      const material = await buscarMaterialPorNome(nome);
+      // Buscar material para obter seu SKU (via material_ids.json)
+      const material = await buscarMaterialPorNomeMateriaPrima(nome);
       if (!material) {
-        alert("Matéria-prima não encontrada no estoque. Cadastre-a primeiro.");
+        alert("Matéria-prima não encontrada no cadastro.");
         return;
       }
 
